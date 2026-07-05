@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { ChapterGenerationOutput } from '@/types';
 import { Loader2, BookOpen, GitBranch, Globe, AlertTriangle, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import AuditPanel, { AuditResult } from './AuditPanel';
+import AuditPanel from './AuditPanel';
+import type { AuditResult } from '@/server/audit/fanqieSkill';
 
 type FlowStep = 'idle' | 'generating' | 'audit' | 'confirmed' | 'rejected';
 
@@ -38,6 +39,7 @@ export function ChapterView({
   onRequestFix,
   onReject,
 }: ChapterViewProps) {
+  const [activeTab, setActiveTab] = useState<'content' | 'events' | 'world' | 'audit'>('content');
 
   return (
     <div className="flex flex-col h-full bg-gray-950 text-gray-100">

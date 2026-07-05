@@ -1,13 +1,18 @@
 /**
  * 🔥 fanqie-novel-skill - 番茄小说质量审计系统
  * 
- * 功能：
- * 1. AI味检测（套路词/空洞表达/排比句）
- * 2. 逻辑审计（27维：时间线/设定一致性/行为合理性）
- * 3. 平台规则检查（300字主角/1000字钩子）
- * 4. 伏笔追踪（Truth Files）
+ * 【重要】Skill = "裁判"，不是"选手"
  * 
- * 角色：质量闸门（不参与生成，只做审计）
+ * 功能（只做3件事）：
+ * 1. AI味检测（套路词/空洞表达/排比句）
+ * 2. 逻辑审计（时间线/设定一致性/行为合理性）
+ * 3. 平台规则检查（300字主角/1000字钩子）
+ * 
+ * 【不做】：
+ * ❌ 不改写剧情
+ * ❌ 不重构段落
+ * ❌ 不重写章节
+ * ❌ 不指导"怎么写"
  */
 
 // ==================== 类型定义 ====================
@@ -25,7 +30,9 @@ export interface AuditResult {
   status: 'pass' | 'fix' | 'reject';
   score: number; // 0-100，综合质量评分
   issues: AuditIssue[];
-  suggestions: string[];
+  // 【重要】Skill 不提供"修复建议"
+  // 原因：避免 Skill 变成"第二个写作AI"
+  // suggestions: string[]; // 移除
   stats: {
     aiToneScore: number; // AI味评分（0-100，越高越像AI）
     logicScore: number; // 逻辑评分（0-100）
@@ -246,43 +253,21 @@ function checkPlatformRules(content: string, context: ChapterContext): AuditIssu
   return issues;
 }
 
-// ==================== 伏笔追踪 ====================
+// ==================== 伏笔追踪（简化版） ====================
 
-function trackHooks(content: string, context: ChapterContext): AuditIssue[] {
+/**
+ * 【注意】伏笔追踪不应该由 Skill 做
+ * 
+ * 正确分工：
+ * - Event Flow：管理伏笔（设置/解决）
+ * - Story Memory：记录伏笔
+ * - Skill：只检查"伏笔是否遗忘"（不做管理）
+ */
+function trackHooksSimple(content: string, context: ChapterContext): AuditIssue[] {
   const issues: AuditIssue[] = [];
   
-  // 从 Story Memory 中获取待解决伏笔
-  if (context.storyMemory?.pendingHooks) {
-    const pendingHooks = context.storyMemory.pendingHooks;
-    
-    pendingHooks.forEach((hook: any) => {
-      // 检查伏笔是否在本章被解决
-      if (content.includes(hook.resolution) || content.includes(hook.keyword)) {
-        // 伏笔已解决，OK
-        return;
-      }
-      
-      // 检查伏笔是否过期（超过N章未解决）
-      if (context.chapterNumber - hook.chapterNumber > 5) {
-        issues.push({
-          type: 'hook',
-          severity: 'medium',
-          message: `伏笔"${hook.description}"已${context.chapterNumber - hook.chapterNumber}章未解决`,
-          suggestion: `建议在本章解决或明确提及该伏笔`,
-          context: `伏笔来源：第${hook.chapterNumber}章`,
-        });
-      }
-    });
-  }
-  
-  // 检测本章新设置的伏笔
-  const hookPatterns = [
-    /看似(.+?)，实则/g,
-    /没想到(.+?)竟然/g,
-    /表面上(.+?)，实际上/g,
-  ];
-  
-  // TODO: 提取本章新伏笔，加入 pendingHooks
+  // 简化版：只检查"明显的伏笔遗忘"
+  // 不做复杂的伏笔管理
   
   return issues;
 }
@@ -302,8 +287,8 @@ export function auditChapter(
   // 3. 平台规则检查
   const platformIssues = checkPlatformRules(content, context);
   
-  // 4. 伏笔追踪
-  const hookIssues = trackHooks(content, context);
+  // 4. 伏笔追踪（简化版）
+  const hookIssues = trackHooksSimple(content, context);
   
   // 合并所有问题
   const allIssues = [...aiToneIssues, ...logicIssues, ...platformIssues, ...hookIssues];
@@ -319,6 +304,10 @@ export function auditChapter(
   );
   
   // 判断状态
+  // 【重要】Skill 只做裁判，不做选手
+  // - PASS（≥80分，无critical问题）：允许更新世界状态
+  // - FIX（60-79分，无critical问题）：建议修改，但不强制
+  // - REJECT（<60分，或有critical问题）：拒绝，不更新世界状态
   let status: 'pass' | 'fix' | 'reject';
   if (score >= 80 && allIssues.filter(i => i.severity === 'critical').length === 0) {
     status = 'pass';
@@ -328,14 +317,15 @@ export function auditChapter(
     status = 'reject';
   }
   
-  // 生成修改建议
-  const suggestions = allIssues.map(issue => issue.suggestion);
+  // 【重要】Skill 不提供"修复建议"
+  // 原因：避免 Skill 变成"第二个写作AI"
+  // 只返回审计结果，让 Writer 或用户决定如何修改
   
   return {
     status,
     score,
     issues: allIssues,
-    suggestions: [...new Set(suggestions)], // 去重
+    // suggestions: [...new Set(suggestions)], // 移除：Skill 不提供修复建议
     stats: {
       aiToneScore,
       logicScore,

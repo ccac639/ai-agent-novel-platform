@@ -180,24 +180,6 @@ export default function AuditPanel({
         </div>
       )}
       
-      {/* 修改建议 */}
-      {auditResult.suggestions.length > 0 && (
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-blue-400 mb-3 flex items-center gap-2">
-            <Lightbulb className="w-5 h-5" />
-            修改建议
-          </h3>
-          <ul className="space-y-2">
-            {auditResult.suggestions.map((suggestion, idx) => (
-              <li key={idx} className="text-gray-300 flex items-start gap-2">
-                <ArrowRight className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                {suggestion}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      
       {/* 操作按钮 */}
       <div className="flex items-center gap-4 pt-4 border-t border-gray-700/50">
         {auditResult.status === 'pass' && (

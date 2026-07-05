@@ -8,13 +8,12 @@ import { auditChapter, AuditResult } from '@/server/audit/fanqieSkill';
  * 
  * 生成新章节 - 系统核心闭环入口
  * 
- * 完整流程：
- * 1. 读取 World State
- * 2. 生成剧情事件
- * 3. 调用 Skill System
- * 4. 更新 World State
- * 5. 生成小说正文
- * 6. 返回结果
+ * 【重要】正确流程（确认驱动）：
+ * 1. 生成剧情事件
+ * 2. 生成小说正文
+ * 3. 🔥 审计章节（fanqie-novel-skill）
+ * 4. 【只有审计通过后才更新 World State】
+ * 5. 返回结果
  */
 export async function POST(request: NextRequest) {
   try {
@@ -23,11 +22,11 @@ export async function POST(request: NextRequest) {
     
     // 使用默认世界状态（如果未提供）
     const baseWorldState = worldState && Object.keys(worldState).length > 0 ? worldState : MOCK_SNAPSHOT;
-
+    
     // 模拟生成延迟
     await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // 1. 生成剧情事件
+    
+    // 1. 生成剧情事件（结构化指令，不参与创作）
     const events: WorldEvent[] = [
       {
         id: `event-${Date.now()}-1`,
@@ -35,15 +34,7 @@ export async function POST(request: NextRequest) {
         description: '林夜与血影宗长老展开激战',
         timestamp: Date.now(),
         affectedCharacters: ['char-1', 'char-2'],
-        changes: [
-          {
-            targetType: 'character',
-            targetId: 'char-1',
-            field: 'hp',
-            oldValue: 100,
-            newValue: 65,
-          },
-        ],
+        changes: [],
       },
       {
         id: `event-${Date.now()}-2`,
@@ -54,30 +45,14 @@ export async function POST(request: NextRequest) {
         changes: [],
       },
     ];
-
-    // 2. 更新世界状态（模拟）
-    const updatedWorldState: WorldSnapshot = {
-      ...baseWorldState,
-      id: `snapshot-chapter-${chapterNumber}`,
-      chapterNumber,
-      timestamp: Date.now(),
-      characters: {
-        ...baseWorldState.characters,
-        'char-1': {
-          ...baseWorldState.characters['char-1'],
-          hp: 65,
-          emotion: '愤怒',
-        },
-      },
-    };
-
-    // 3. 生成小说正文
-    const content = generateChapterContent(chapterNumber, events, updatedWorldState);
     
-    // 4. 🔥 审计章节（fanqie-novel-skill）
+    // 2. 生成小说正文（只负责"怎么写"，不决定"发生什么"）
+    const content = generateChapterContent(chapterNumber, events, baseWorldState);
+    
+    // 3. 🔥 审计章节（fanqie-novel-skill）
     const auditContext = {
       chapterNumber,
-      worldState: updatedWorldState,
+      worldState: baseWorldState,
       eventFlow: events,
       storyMemory: body.storyMemory || null,
       previousChapters: body.previousChapters || [],
@@ -85,22 +60,22 @@ export async function POST(request: NextRequest) {
     
     const auditResult: AuditResult = auditChapter(content, auditContext);
     
-    // 5. 根据审计结果决定是否更新世界状态
+    // 4. 【只有审计通过后才更新世界状态】
     let shouldUpdateWorldState = false;
-    let finalWorldState = updatedWorldState;
+    let updatedWorldState = null;
     
     if (auditResult.status === 'pass') {
-      // 审计通过：更新世界状态
+      // 审计通过：才更新世界状态
+      updatedWorldState = applyEventsToWorldState(baseWorldState, events, chapterNumber);
       shouldUpdateWorldState = true;
-    } else if (auditResult.status === 'fix') {
-      // 需要修改：暂不更新世界状态，等待用户确认
-      shouldUpdateWorldState = false;
     } else {
-      // 拒绝：不更新世界状态
+      // 审计不通过：不更新世界状态
       shouldUpdateWorldState = false;
+      // 返回原始世界状态（未修改）
+      updatedWorldState = baseWorldState;
     }
     
-    // 6. 构建响应（包含审计结果）
+    // 5. 构建响应
     const response = {
       success: true,
       data: {
@@ -110,9 +85,9 @@ export async function POST(request: NextRequest) {
         wordCount: content.length,
         events,
         worldStateBefore: baseWorldState,
-        worldStateAfter: shouldUpdateWorldState ? finalWorldState : null,
+        worldStateAfter: shouldUpdateWorldState ? updatedWorldState : null,
         audit: auditResult, // 🔥 审计结果
-        shouldUpdateWorldState,
+        shouldUpdateWorldState, // 是否应该更新世界状态
         metadata: {
           generationTime: 2000,
           model: 'gpt-4',
@@ -123,7 +98,7 @@ export async function POST(request: NextRequest) {
         },
       },
     };
-
+    
     return NextResponse.json(response);
   } catch (error: any) {
     return NextResponse.json(
@@ -209,4 +184,29 @@ export async function GET(request: NextRequest) {
       message: '章节生成完成',
     },
   });
+}
+
+/**
+ * 根据事件更新世界状态
+ */
+function applyEventsToWorldState(
+  baseWorldState: WorldSnapshot,
+  events: any[],
+  chapterNumber: number
+): WorldSnapshot {
+  // 简化版：只更新章节号和时间戳
+  return {
+    ...baseWorldState,
+    id: `snapshot-chapter-${chapterNumber}`,
+    chapterNumber,
+    timestamp: Date.now(),
+    characters: {
+      ...baseWorldState.characters,
+      'char-1': {
+        ...baseWorldState.characters['char-1'],
+        hp: 65, // 模拟：林夜 HP 下降
+        emotion: '愤怒',
+      },
+    },
+  };
 }
