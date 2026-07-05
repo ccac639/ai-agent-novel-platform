@@ -9,7 +9,8 @@ import {
   Network, 
   GitBranch,
   Globe,
-  FileText, // 新增：Chapter 图标
+  FileText,
+  Library,
 } from 'lucide-react';
 
 /**
@@ -27,6 +28,7 @@ export function Sidebar() {
     { id: 'agent-trace', label: '决策追踪', icon: Network, path: '/agent-trace' },
     { id: 'event-flow', label: '事件流', icon: GitBranch, path: '/event-flow' },
     { id: 'world-state', label: '世界状态', icon: Globe, path: '/world-state' },
+    { id: 'knowledge', label: '知识库', icon: Library, path: '/knowledge' },
   ];
 
   const handleNavigation = (path: string) => {
