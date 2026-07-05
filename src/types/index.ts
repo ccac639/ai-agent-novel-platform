@@ -170,10 +170,13 @@ export interface ChapterGenerationOutput {
   skillExecutions: SkillExecution[];
   worldStateBefore: WorldSnapshot;
   worldStateAfter: WorldSnapshot;
+  audit?: any; // 🔥 审计结果（fanqie-novel-skill）
   metadata: {
     model: string;
     tokenUsage: number;
     cost: number;
+    auditTime?: number; // 审计耗时
+    auditScore?: number; // 审计评分
   };
 }
 

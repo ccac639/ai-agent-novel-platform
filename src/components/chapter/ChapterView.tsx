@@ -2,25 +2,42 @@
 
 import { useState } from 'react';
 import { ChapterGenerationOutput } from '@/types';
-import { Loader2, BookOpen, GitBranch, Globe } from 'lucide-react';
+import { Loader2, BookOpen, GitBranch, Globe, AlertTriangle, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import AuditPanel, { AuditResult } from './AuditPanel';
+
+type FlowStep = 'idle' | 'generating' | 'audit' | 'confirmed' | 'rejected';
 
 interface ChapterViewProps {
   chapterData: ChapterGenerationOutput | null;
   isGenerating: boolean;
   onGenerate: () => void;
+  flowStep: FlowStep;
+  auditResult: AuditResult | null;
+  onAuditConfirm: () => void;
+  onRequestFix: (suggestions: string[]) => void;
+  onReject: () => void;
 }
 
 /**
- * Chapter View - 章节展示组件
+ * Chapter View - 章节展示组件（集成审计流程）
  * 
- * 功能：
- * 1. 展示生成的章节正文
- * 2. 显示生成进度
- * 3. 查看事件流和世界状态变化
+ * 新流程：
+ * 1. 生成章节
+ * 2. 🔥 审计章节（fanqie-novel-skill）
+ * 3. 用户确认/修改/拒绝
+ * 4. 更新世界状态和记忆
  */
-export function ChapterView({ chapterData, isGenerating, onGenerate }: ChapterViewProps) {
-  const [activeTab, setActiveTab] = useState<'content' | 'events' | 'world'>('content');
+export function ChapterView({ 
+  chapterData, 
+  isGenerating, 
+  onGenerate,
+  flowStep,
+  auditResult,
+  onAuditConfirm,
+  onRequestFix,
+  onReject,
+}: ChapterViewProps) {
 
   return (
     <div className="flex flex-col h-full bg-gray-950 text-gray-100">
@@ -71,12 +88,36 @@ export function ChapterView({ chapterData, isGenerating, onGenerate }: ChapterVi
       {/* 内容区域 */}
       {chapterData ? (
         <div className="flex-1 overflow-y-auto">
+          {/* 🔥 审计面板（如果正在审计） */}
+          {flowStep === 'audit' && auditResult && (
+            <div className="p-6 border-b border-gray-800">
+              <AuditPanel
+                auditResult={auditResult}
+                onConfirm={onAuditConfirm}
+                onRequestFix={onRequestFix}
+                onReject={onReject}
+                isLoading={isGenerating}
+              />
+            </div>
+          )}
+          
+          {/* 审计通过提示 */}
+          {flowStep === 'confirmed' && (
+            <div className="p-4 bg-green-500/10 border-b border-green-500/30">
+              <div className="flex items-center gap-2 text-green-400">
+                <CheckCircle size={20} />
+                <span className="font-medium">✅ 审计通过！世界状态已更新</span>
+              </div>
+            </div>
+          )}
+          
           {/* Tab 切换 */}
           <div className="flex gap-1 p-4 border-b border-gray-800">
             {[
               { id: 'content' as const, label: '正文', icon: BookOpen },
               { id: 'events' as const, label: '事件流', icon: GitBranch },
               { id: 'world' as const, label: '世界状态', icon: Globe },
+              ...(auditResult ? [{ id: 'audit' as const, label: '审计报告', icon: AlertTriangle }] : []),
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -93,7 +134,7 @@ export function ChapterView({ chapterData, isGenerating, onGenerate }: ChapterVi
               </button>
             ))}
           </div>
-
+          
           {/* 内容展示 */}
           <div className="p-6">
             {activeTab === 'content' && (
@@ -103,7 +144,7 @@ export function ChapterView({ chapterData, isGenerating, onGenerate }: ChapterVi
                 </pre>
               </div>
             )}
-
+            
             {activeTab === 'events' && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-gray-300 mb-3">剧情事件</h3>
@@ -122,7 +163,7 @@ export function ChapterView({ chapterData, isGenerating, onGenerate }: ChapterVi
                 ))}
               </div>
             )}
-
+            
             {activeTab === 'world' && (
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-gray-300 mb-3">世界状态变化</h3>
@@ -131,6 +172,19 @@ export function ChapterView({ chapterData, isGenerating, onGenerate }: ChapterVi
                     {JSON.stringify(chapterData.worldStateAfter, null, 2)}
                   </pre>
                 </div>
+              </div>
+            )}
+            
+            {activeTab === 'audit' && auditResult && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-gray-300 mb-3">审计详情</h3>
+                <AuditPanel
+                  auditResult={auditResult}
+                  onConfirm={onAuditConfirm}
+                  onRequestFix={onRequestFix}
+                  onReject={onReject}
+                  isLoading={isGenerating}
+                />
               </div>
             )}
           </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { WorldSnapshot, WorldEvent } from '@/types';
 import { MOCK_SNAPSHOT } from '@/lib/mockWorldState';
+import { auditChapter, AuditResult } from '@/server/audit/fanqieSkill';
 
 /**
  * POST /api/generate-chapter
@@ -72,8 +73,34 @@ export async function POST(request: NextRequest) {
 
     // 3. 生成小说正文
     const content = generateChapterContent(chapterNumber, events, updatedWorldState);
-
-    // 4. 构建响应
+    
+    // 4. 🔥 审计章节（fanqie-novel-skill）
+    const auditContext = {
+      chapterNumber,
+      worldState: updatedWorldState,
+      eventFlow: events,
+      storyMemory: body.storyMemory || null,
+      previousChapters: body.previousChapters || [],
+    };
+    
+    const auditResult: AuditResult = auditChapter(content, auditContext);
+    
+    // 5. 根据审计结果决定是否更新世界状态
+    let shouldUpdateWorldState = false;
+    let finalWorldState = updatedWorldState;
+    
+    if (auditResult.status === 'pass') {
+      // 审计通过：更新世界状态
+      shouldUpdateWorldState = true;
+    } else if (auditResult.status === 'fix') {
+      // 需要修改：暂不更新世界状态，等待用户确认
+      shouldUpdateWorldState = false;
+    } else {
+      // 拒绝：不更新世界状态
+      shouldUpdateWorldState = false;
+    }
+    
+    // 6. 构建响应（包含审计结果）
     const response = {
       success: true,
       data: {
@@ -83,12 +110,16 @@ export async function POST(request: NextRequest) {
         wordCount: content.length,
         events,
         worldStateBefore: baseWorldState,
-        worldStateAfter: updatedWorldState,
+        worldStateAfter: shouldUpdateWorldState ? finalWorldState : null,
+        audit: auditResult, // 🔥 审计结果
+        shouldUpdateWorldState,
         metadata: {
           generationTime: 2000,
           model: 'gpt-4',
           tokenUsage: 2500,
           cost: 0.075,
+          auditTime: 500,
+          auditScore: auditResult.score,
         },
       },
     };
