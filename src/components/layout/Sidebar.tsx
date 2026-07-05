@@ -9,6 +9,7 @@ import {
   Network, 
   GitBranch,
   Globe,
+  FileText, // 新增：Chapter 图标
 } from 'lucide-react';
 
 /**
@@ -20,6 +21,7 @@ export function Sidebar() {
   const menuItems = [
     { id: 'dashboard', label: '控制台', icon: Home, path: '/' },
     { id: 'novel', label: '小说管理', icon: BookOpen, path: '/novel' },
+    { id: 'chapter', label: '章节生成', icon: FileText, path: '/chapter' }, // 新增
     { id: 'skill-lab', label: 'Skill 实验室', icon: FlaskConical, path: '/skill-lab' },
     { id: 'memory', label: '经验查看器', icon: Brain, path: '/memory' },
     { id: 'agent-trace', label: '决策追踪', icon: Network, path: '/agent-trace' },

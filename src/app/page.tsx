@@ -7,6 +7,7 @@ import {
   Network, 
   GitBranch,
   Globe,
+  FileText, // 新增
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -71,6 +72,32 @@ export default function DashboardPage() {
         <p className="text-gray-500">
           V3 叙事学习系统 - AI 小说操作系统
         </p>
+      </div>
+
+      {/* 快速操作 */}
+      <div className="mb-8 p-6 bg-gradient-to-r from-cyan-900/20 to-blue-900/20 
+                    border border-cyan-800/50 rounded-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-cyan-400 mb-2">
+              开始创作
+            </h2>
+            <p className="text-gray-400">
+              点击按钮，系统将自动完成：事件生成 → 技能调用 → 世界更新 → 章节生成
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/chapter')}
+            className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r 
+                     from-cyan-600 to-blue-600 text-white rounded-xl 
+                     hover:from-cyan-500 hover:to-blue-500 transition-all 
+                     duration-300 hover:scale-105 hover:shadow-xl 
+                     hover:shadow-cyan-900/50 font-medium text-lg"
+          >
+            <FileText size={24} />
+            生成下一章
+          </button>
+        </div>
       </div>
 
       {/* 模块网格 */}

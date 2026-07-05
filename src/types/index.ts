@@ -149,6 +149,34 @@ export interface EventFlow {
   status: 'running' | 'completed' | 'error';
 }
 
+// ==================== Chapter Generation 类型 ====================
+
+/** 章节生成输入 */
+export interface ChapterGenerationInput {
+  chapterNumber: number;
+  worldState: WorldSnapshot;
+  previousChapter?: string;
+  userPrompt?: string;
+}
+
+/** 章节生成输出 */
+export interface ChapterGenerationOutput {
+  chapterNumber: number;
+  title: string;
+  content: string;
+  wordCount: number;
+  generationTime: number;
+  eventFlow: any;
+  skillExecutions: SkillExecution[];
+  worldStateBefore: WorldSnapshot;
+  worldStateAfter: WorldSnapshot;
+  metadata: {
+    model: string;
+    tokenUsage: number;
+    cost: number;
+  };
+}
+
 // ==================== Page View 类型 ====================
 
 export type PageView = 
